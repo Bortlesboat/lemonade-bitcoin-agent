@@ -12,17 +12,16 @@ from tools import TOOLS, execute_tool
 # ── Configuration ────────────────────────────────────────────────────────
 
 LEMONADE_URL = os.environ.get("LEMONADE_URL", "http://localhost:13305/api/v1")
-MODEL = os.environ.get("LEMONADE_MODEL", "llama-3.1-8b-instruct")
+MODEL = os.environ.get("LEMONADE_MODEL", "Llama-3.2-3B-Instruct-GGUF")
 MAX_ITERATIONS = 10
 
 SYSTEM_PROMPT = """\
 You are a Bitcoin network analyst with access to real-time Bitcoin data.
 
 Rules:
-- ALWAYS use your tools to get current data before answering Bitcoin questions.
-- Never guess or make up numbers — call a tool first.
+- ALWAYS call a tool before answering any Bitcoin question. Never guess.
+- Call ONE tool at a time. After receiving results, either call another tool or answer.
 - Be concise. Lead with the data, then add brief analysis.
-- When a question needs multiple data points, call multiple tools.
 - Format numbers clearly: use commas for large numbers, 2 decimal places for prices.
 """
 
@@ -30,7 +29,6 @@ Rules:
 
 CYAN = "\033[36m"
 GREEN = "\033[32m"
-YELLOW = "\033[33m"
 DIM = "\033[2m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -43,26 +41,55 @@ def print_tool_call(name: str, args: dict):
 
 
 def run_agent(client: OpenAI, messages: list) -> str:
-    """Run the agentic loop: send → tool calls → execute → repeat."""
+    """Run the agentic loop: send → tool calls → execute → repeat.
+
+    After tool data is collected, the next call omits the tools parameter
+    so the model produces a text summary instead of more tool calls.
+    Small local models generate much better responses this way.
+    """
+    tool_rounds = 0
+
     for _ in range(MAX_ITERATIONS):
+        kwargs = {"model": MODEL, "messages": messages, "temperature": 0.1}
+
+        # Offer tools only on the first call. After collecting tool data,
+        # omit tools to force the model to produce a text summary.
+        # Small models get stuck in loops if tools stay available.
+        if tool_rounds == 0:
+            kwargs["tools"] = TOOLS
+
         try:
-            response = client.chat.completions.create(
-                model=MODEL,
-                messages=messages,
-                tools=TOOLS,
-                temperature=0.1,
-            )
+            response = client.chat.completions.create(**kwargs)
         except Exception as e:
-            return f"Error calling Lemonade: {e}"
+            err_msg = str(e)
+            if "Failed to parse" in err_msg and tool_rounds > 0:
+                # Model tried parallel tool calls and the backend choked.
+                # Drop tools and ask for a text summary instead.
+                kwargs.pop("tools", None)
+                try:
+                    response = client.chat.completions.create(**kwargs)
+                except Exception as e2:
+                    return f"Error: {e2}"
+            else:
+                return f"Error calling Lemonade: {e}"
 
-        choice = response.choices[0]
-        msg = choice.message
+        if not response.choices:
+            if tool_rounds > 0:
+                # Model returned empty after tools — retry without tools
+                kwargs.pop("tools", None)
+                try:
+                    response = client.chat.completions.create(**kwargs)
+                except Exception as e:
+                    return f"Error: {e}"
+                if not response.choices:
+                    return "(no response from model)"
+            else:
+                return "(no response from model)"
 
-        # If the model wants to call tools
+        msg = response.choices[0].message
+
         if msg.tool_calls:
-            # Append the assistant message with tool calls
             messages.append(msg)
-
             for tool_call in msg.tool_calls:
                 name = tool_call.function.name
                 try:
@@ -78,12 +105,13 @@ def run_agent(client: OpenAI, messages: list) -> str:
                     "tool_call_id": tool_call.id,
                     "content": result,
                 })
+
+            tool_rounds += 1
             continue
 
-        # No tool calls — return the text response
         return msg.content or "(no response)"
 
-    return "(max iterations reached — the agent got stuck in a tool-calling loop)"
+    return "(max iterations reached)"
 
 
 def main():
