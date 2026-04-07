@@ -6,6 +6,8 @@ No cloud LLM. No API keys. Your Bitcoin questions stay on your machine.
 
 ## Demo
 
+[![Demo Video](https://img.youtube.com/vi/OBSauHpRmyg/maxresdefault.jpg)](https://www.youtube.com/watch?v=OBSauHpRmyg)
+
 Real output from a live session running Llama 3.2 3B on AMD Lemonade (Vulkan backend, RTX 3060):
 
 ```
