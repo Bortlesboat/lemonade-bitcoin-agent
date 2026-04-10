@@ -111,6 +111,12 @@ lemonade-server pull Llama-3.2-3B-Instruct-GGUF
 
 Any GGUF model that supports tool calling will work. The 3B model runs at ~90 tok/s on Vulkan.
 
+If you're starting on a CPU-first AMD box, `Llama-3.2-1B-Instruct-GGUF` is a safer first pull for a quick validation pass:
+
+```bash
+lemonade-server pull Llama-3.2-1B-Instruct-GGUF
+```
+
 ### 3. Install and run
 
 ```bash
@@ -157,7 +163,29 @@ Tested on AMD Ryzen 7 5800X3D + RTX 3060 12GB (Vulkan backend):
 | Typical query time | **3-9 seconds** end-to-end |
 | VRAM usage | ~3 GB |
 
-Larger models (8B, 13B) work too — just set `LEMONADE_MODEL` to your preferred model name.
+Larger models (8B, 13B) work too - just set `LEMONADE_MODEL` to your preferred model name.
+
+## AMD Validation
+
+Additional validation on April 7, 2026 confirmed the agent flow on a second AMD machine end to end:
+
+- Host: HP Pavilion Desktop TP01-2xxx
+- CPU: AMD Ryzen 7 5700G with Radeon Graphics
+- Runtime: Lemonade 10.0.1
+- Backend: `llamacpp:cpu`
+- Model: `Llama-3.2-1B-Instruct-GGUF`
+
+Verified local proof:
+
+```
+tool call: get_bitcoin_price
+answer: The current Bitcoin price is $68,513.
+[24.5 tok/s generation | 268.5 tok/s prompt]
+```
+
+This shows the Bitcoin tool-calling loop works on an AMD client machine, not just on the original RTX 3060 demo box.
+
+One caveat: on this specific Ryzen 7 5700G CPU setup, `Llama-3.2-3B-Instruct-GGUF` produced corrupted `GGGG` output on the CPU backend, while the 1B model was stable. So the current AMD-silicon proof uses the working 1B model, and the higher-throughput 3B numbers above remain the Vulkan demo from the main submission machine.
 
 ## Configuration
 
