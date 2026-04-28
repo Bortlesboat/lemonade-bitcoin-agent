@@ -195,6 +195,15 @@ One caveat: on this specific Ryzen 7 5700G CPU setup, `Llama-3.2-3B-Instruct-GGU
 | `LEMONADE_MODEL` | `Llama-3.2-3B-Instruct-GGUF` | Model to use |
 | `SATOSHI_API_URL` | `https://bitcoinsapi.com/api/v1` | Bitcoin data source |
 
+## Agent Integration
+
+This repo is also a concrete example of adding Satoshi API to an agent. For other repos, use the reusable integration kit:
+
+- Satoshi API agent guide: https://github.com/Bortlesboat/bitcoin-api/blob/main/docs/AGENT_INTEGRATION.md
+- Agent-readable overview: https://bitcoinsapi.com/llms.txt
+- MCP setup: https://bitcoinsapi.com/mcp-setup
+- x402 first paid call: https://bitcoinsapi.com/x402/start
+
 ## Why Local Matters for Bitcoin
 
 Bitcoin users care about privacy. If you're checking fees before a transaction or analyzing your wallet activity, sending those questions to a cloud LLM means sharing your financial intent with a third party.
